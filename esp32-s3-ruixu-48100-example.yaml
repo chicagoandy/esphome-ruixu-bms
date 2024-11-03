@@ -1,0 +1,2610 @@
+substitutions:
+  name: ruixu-battery-monitor
+  friendly_name: bms # this will be appended before the entitiy names as per newer ESPhome standard - leave "bms" to work with my dashboards by default
+  batt_0: "batt 0"
+  batt_1: "batt 1"
+  batt_2: "batt 2"
+  batt_3: "batt 3"
+  batt_4: "batt 4"
+  batt_5: "batt 5"
+  batt_6: "batt 6"
+  batt_7: "batt 7"
+  batt_8: "batt 8"
+  batt_9: "batt 9"
+  device_description: "Monitor and control a Ruixu BMS via RS485 (Modbus) with M5Stack Atomic ESP32 S3 lite"
+  tx_pin: GPIO2   # M5stack Atom S3 + Atomic RS485 base = GPIO6 | Isolated RS485 Grove module = GPIO2
+  rx_pin: GPIO1   # M5stack Atom S3 + Atomic RS485 base = GPIO5 | Isolated RS485 Grove module = GPIO1
+  external_components_source: github://chicagoandy/esphome-ruixu-bms@main
+
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+  comment: ${device_description}
+  min_version: 2024.6.0
+  project:
+    name: "syssi.esphome-seplos-bms"
+    version: 1.2.0
+
+
+
+
+
+external_components:
+  - source: ${external_components_source}
+    refresh: 0s
+
+preferences:
+  flash_write_interval: 24h # prevent the flash from wearing out 
+
+esp32:
+  board: esp32-s3-devkitc-1 # m5stack-atoms3 #hardware is M5stack Atom S3 Lite with Atomic RS485 base - but the closest define with this version of platformio is the esp32-s3-devkitc-1
+  variant: esp32s3
+  framework:
+    type: arduino
+    
+# Enable logging
+logger:
+  #level: VERBOSE
+  level: VERBOSE
+  baud_rate: 921600 # faster logging 
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: ""
+
+ota:
+  - platform: esphome
+    password: ""
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+
+time:
+  - platform: homeassistant
+    id: esptime
+
+uart:
+  - id: uart_0
+    baud_rate: 9600
+    tx_pin: ${tx_pin}
+    rx_pin: ${rx_pin}
+    #debug:
+    #  direction: BOTH
+    #  dummy_receiver: false
+    #  after:
+    #    delimiter: "0x16"
+    #  sequence:
+    #    - lambda: |-
+    #        UARTDebug::log_string(direction, bytes);      // both of these data types are useful for debugging issues or reverse engineering protocols 
+    #        UARTDebug::log_hex(direction, bytes, ' ');    // cyber chef is also very nice https://gchq.github.io/CyberChef/#recipe=From_Base(16)Multiply('Line%20feed')From_Charcode('Space',16/disabled)&input=NkQ2MA
+
+
+seplos_modbus:
+  id: modbus0
+  uart_id: uart_0
+  rx_timeout: 150ms
+
+# RS485 transceiver should only be connected to the master BMS OUT port - the same one going to the inverter - it will not work correctly on any other battery or port!! 
+# the master battery CAN lines (middle pair) go to the inverter - the last pair (brown) go to the RS485 transceiver
+# it will NOT work correclty on the extra port on the last slave battery. 
+# the Ruixu BMS seems sensitive to when the data is sent - if the logs show only 1 battery data being received try adjusting the interval or just restarting the ESP32
+seplos_bms:
+  - id: bms0 
+    address: 0x00 # master BMS
+    protocol_version: 0x21 # Known protocol versions: 0x20 (Seplos), 0x26 (Boqiang), 0x21 (Ruixu)
+    seplos_modbus_id: modbus0
+    update_interval: 5.05s # it seems that offsetting these intervals helps with making sure all 10 battery requests dont interfere with eachother. 
+  - id: bms1
+    address: 0x01 # slave #1
+    protocol_version: 0x21 # Known protocol versions: 0x20 (Seplos), 0x26 (Boqiang), 0x21 (Ruixu)
+    seplos_modbus_id: modbus0
+    update_interval: 5.07s
+  - id: bms2
+    address: 0x02 # slave #2
+    protocol_version: 0x21 # Known protocol versions: 0x20 (Seplos), 0x26 (Boqiang), 0x21 (Ruixu)
+    seplos_modbus_id: modbus0
+    update_interval: 5.09s
+  - id: bms3
+    address: 0x03 # slave #3
+    protocol_version: 0x21 # Known protocol versions: 0x20 (Seplos), 0x26 (Boqiang), 0x21 (Ruixu)
+    seplos_modbus_id: modbus0
+    update_interval: 5.11s
+  - id: bms4
+    address: 0x04 # slave #4
+    protocol_version: 0x21 # Known protocol versions: 0x20 (Seplos), 0x26 (Boqiang), 0x21 (Ruixu)
+    seplos_modbus_id: modbus0
+    update_interval: 5.13s
+  - id: bms5
+    address: 0x05 # slave #5
+    protocol_version: 0x21 # Known protocol versions: 0x20 (Seplos), 0x26 (Boqiang), 0x21 (Ruixu)
+    seplos_modbus_id: modbus0
+    update_interval: 5.16s
+  - id: bms6
+    address: 0x06 # slave #6
+    protocol_version: 0x21 # Known protocol versions: 0x20 (Seplos), 0x26 (Boqiang), 0x21 (Ruixu)
+    seplos_modbus_id: modbus0
+    update_interval: 5.18s
+  - id: bms7
+    address: 0x07 # slave #7
+    protocol_version: 0x21 # Known protocol versions: 0x20 (Seplos), 0x26 (Boqiang), 0x21 (Ruixu)
+    seplos_modbus_id: modbus0
+    update_interval: 5.22s
+  - id: bms8
+    address: 0x08 # slave #8
+    protocol_version: 0x21 # Known protocol versions: 0x20 (Seplos), 0x26 (Boqiang), 0x21 (Ruixu)
+    seplos_modbus_id: modbus0
+    update_interval: 5.22s
+  - id: bms9
+    address: 0x09 # slave #9
+    protocol_version: 0x21 # Known protocol versions: 0x20 (Seplos), 0x26 (Boqiang), 0x21 (Ruixu)
+    seplos_modbus_id: modbus0
+    update_interval: 5.24s
+
+
+binary_sensor:
+  - platform: status # exposes the node state in HA
+    name: "Node Status"
+    id: system_status
+
+text_sensor:
+  - platform: wifi_info # exposes the node IP in HA
+    ip_address:
+      name: ESP IP Address
+      id: ip_address
+  - platform: debug
+    device:
+      name: "Device Info"
+    reset_reason:
+      name: "Reset Reason"
+
+
+# Example configuration entry
+debug:
+  update_interval: 5s
+
+
+
+sensor:
+
+ #debug info 
+#sensor:
+  - platform: debug
+    free:
+      name: "Heap Free"
+    block:
+      name: "Heap Max Block"
+    loop_time:
+      name: "Loop Time"
+
+
+  # these sensors calcualte kWh (energy) and are very useful - the separate IN / OUT sensors are necessary for the HA default power monitoring and the https://github.com/slipx06/sunsynk-power-flow-card which is highly recommended
+  - { power_id: batt_0_power_net, platform: total_daily_energy, method: left, accuracy_decimals: 2, unit_of_measurement: 'kWh', id: batt_0_energy_net, name: "${batt_0} daily energy net"}
+  - { power_id: batt_0_power_in, platform: total_daily_energy, method: left, accuracy_decimals: 2, unit_of_measurement: 'kWh', id: batt_0_energy_in, name: "${batt_0} daily energy in"}
+  - { power_id: batt_0_power_out, platform: total_daily_energy, method: left, accuracy_decimals: 2, unit_of_measurement: 'kWh', id: batt_0_energy_out, name: "${batt_0} daily energy out"}      
+
+  - { power_id: batt_1_power_net, platform: total_daily_energy, method: left, accuracy_decimals: 2, unit_of_measurement: 'kWh', id: batt_1_net_energy_net, name: "${batt_1} daily energy net"}
+  - { power_id: batt_1_power_in, platform: total_daily_energy, method: left, accuracy_decimals: 2, unit_of_measurement: 'kWh', id: batt_1_energy_in, name: "${batt_1} daily energy in"}
+  - { power_id: batt_1_power_out, platform: total_daily_energy, method: left, accuracy_decimals: 2, unit_of_measurement: 'kWh', id: batt_1_energy_out, name: "${batt_1} daily energy out"}        
+
+  - { power_id: batt_2_power_net, platform: total_daily_energy, method: left, accuracy_decimals: 2, unit_of_measurement: 'kWh', id: batt_2_energy_net, name:  "${batt_2} daily energy net"}
+  - { power_id: batt_2_power_in, platform: total_daily_energy, method: left, accuracy_decimals: 2, unit_of_measurement: 'kWh', id: batt_2_energy_in, name: "${batt_2} daily energy in"}
+  - { power_id: batt_2_power_out, platform: total_daily_energy, method: left, accuracy_decimals: 2, unit_of_measurement: 'kWh', id: batt_2_energy_out, name: "${batt_2} daily energy out"}      
+
+  - { power_id: batt_3_power_net, platform: total_daily_energy, method: left, accuracy_decimals: 2, unit_of_measurement: 'kWh', id: batt_3_energy_net, name: "${batt_3} daily energy net"}
+  - { power_id: batt_3_power_in, platform: total_daily_energy, method: left, accuracy_decimals: 2, unit_of_measurement: 'kWh', id: batt_3_energy_in, name: "${batt_3} daily energy in"}
+  - { power_id: batt_3_power_out, platform: total_daily_energy, method: left, accuracy_decimals: 2, unit_of_measurement: 'kWh', id: batt_3_energy_out, name: "${batt_3} daily energy out"}   
+
+  - { power_id: batt_4_power_net, platform: total_daily_energy, method: left, accuracy_decimals: 2, unit_of_measurement: 'kWh', id: batt_4_energy_net, name: "${batt_4} daily energy net"}
+  - { power_id: batt_4_power_in, platform: total_daily_energy, method: left, accuracy_decimals: 2, unit_of_measurement: 'kWh', id: batt_4_energy_in, name: "${batt_4} daily energy in"}
+  - { power_id: batt_4_power_out, platform: total_daily_energy, method: left, accuracy_decimals: 2, unit_of_measurement: 'kWh', id: batt_4_energy_out, name: "${batt_4} daily energy out"}   
+
+  - { power_id: batt_5_power_net, platform: total_daily_energy, method: left, accuracy_decimals: 2, unit_of_measurement: 'kWh', id: batt_5_energy_net, name: "${batt_5} daily energy net"}
+  - { power_id: batt_5_power_in, platform: total_daily_energy, method: left, accuracy_decimals: 2, unit_of_measurement: 'kWh', id: batt_5_energy_in, name: "${batt_5} daily energy in"}
+  - { power_id: batt_5_power_out, platform: total_daily_energy, method: left, accuracy_decimals: 2, unit_of_measurement: 'kWh', id: batt_5_energy_out, name: "${batt_5} daily energy out"}   
+
+  - { power_id: batt_6_power_net, platform: total_daily_energy, method: left, accuracy_decimals: 2, unit_of_measurement: 'kWh', id: batt_6_energy_net, name: "${batt_6} daily energy net"}
+  - { power_id: batt_6_power_in, platform: total_daily_energy, method: left, accuracy_decimals: 2, unit_of_measurement: 'kWh', id: batt_6_energy_in, name: "${batt_6} daily energy in"}
+  - { power_id: batt_6_power_out, platform: total_daily_energy, method: left, accuracy_decimals: 2, unit_of_measurement: 'kWh', id: batt_6_energy_out, name: "${batt_6} daily energy out"}   
+
+  - { power_id: batt_7_power_net, platform: total_daily_energy, method: left, accuracy_decimals: 2, unit_of_measurement: 'kWh', id: batt_7_energy_net, name: "${batt_7} daily energy net"}
+  - { power_id: batt_7_power_in, platform: total_daily_energy, method: left, accuracy_decimals: 2, unit_of_measurement: 'kWh', id: batt_7_energy_in, name: "${batt_7} daily energy in"}
+  - { power_id: batt_7_power_out, platform: total_daily_energy, method: left, accuracy_decimals: 2, unit_of_measurement: 'kWh', id: batt_7_energy_out, name: "${batt_7} daily energy out"}   
+
+  - { power_id: batt_8_power_net, platform: total_daily_energy, method: left, accuracy_decimals: 2, unit_of_measurement: 'kWh', id: batt_8_energy_net, name: "${batt_8} daily energy net"}
+  - { power_id: batt_8_power_in, platform: total_daily_energy, method: left, accuracy_decimals: 2, unit_of_measurement: 'kWh', id: batt_8_energy_in, name: "${batt_8} daily energy in"}
+  - { power_id: batt_8_power_out, platform: total_daily_energy, method: left, accuracy_decimals: 2, unit_of_measurement: 'kWh', id: batt_8_energy_out, name: "${batt_8} daily energy out"}   
+
+  - { power_id: batt_9_power_net, platform: total_daily_energy, method: left, accuracy_decimals: 2, unit_of_measurement: 'kWh', id: batt_9_energy_net, name: "${batt_9} daily energy net"}
+  - { power_id: batt_9_power_in, platform: total_daily_energy, method: left, accuracy_decimals: 2, unit_of_measurement: 'kWh', id: batt_9_energy_in, name: "${batt_9} daily energy in"}
+  - { power_id: batt_9_power_out, platform: total_daily_energy, method: left, accuracy_decimals: 2, unit_of_measurement: 'kWh', id: batt_9_energy_out, name: "${batt_9} daily energy out"}   
+
+  - { power_id: bank_power_net, platform: total_daily_energy, method: left, accuracy_decimals: 2, unit_of_measurement: 'kWh', id: bank_energy_net, name: "bank daily energy net"}
+  - { power_id: bank_power_in, platform: total_daily_energy, method: left, accuracy_decimals: 2, unit_of_measurement: 'kWh', id: bank_energy_in, name: "bank daily energy in"}
+  - { power_id: bank_power_out, platform: total_daily_energy, method: left, accuracy_decimals: 2, unit_of_measurement: 'kWh', id: bank_energy_out, name: "bank daily energy out"}
+
+
+  # these combine all _x batteries into one sensor - if you have more batteries or less you will have to adjust everything to match 
+  - platform: combination
+    type: mean
+    name: "bank state of charge"
+    id: bank_state_of_charge
+    sources:
+      - source: batt_0_state_of_charge
+      - source: batt_1_state_of_charge
+      - source: batt_2_state_of_charge
+      - source: batt_3_state_of_charge
+      - source: batt_4_state_of_charge
+      - source: batt_5_state_of_charge
+      - source: batt_6_state_of_charge
+      - source: batt_7_state_of_charge
+      - source: batt_8_state_of_charge
+      - source: batt_9_state_of_charge
+
+  - platform: combination
+    type: mean
+    name: "bank state of health"
+    id: bank_state_of_health
+    sources:
+      - source: batt_0_state_of_health
+      - source: batt_1_state_of_health
+      - source: batt_2_state_of_health
+      - source: batt_3_state_of_health
+      - source: batt_4_state_of_health
+      - source: batt_5_state_of_health
+      - source: batt_6_state_of_health
+      - source: batt_7_state_of_health
+      - source: batt_8_state_of_health
+      - source: batt_9_state_of_health
+
+  - platform: combination
+    type: sum
+    name: "bank power net"
+    id: bank_power_net
+    sources:
+      - source: batt_0_power_net
+      - source: batt_1_power_net
+      - source: batt_2_power_net
+      - source: batt_3_power_net
+      - source: batt_4_power_net
+      - source: batt_5_power_net
+      - source: batt_6_power_net
+      - source: batt_7_power_net
+      - source: batt_8_power_net
+      - source: batt_9_power_net
+
+  - platform: combination
+    type: sum
+    name: "bank power in"
+    id: bank_power_in
+    sources:
+      - source: batt_0_power_in
+      - source: batt_1_power_in
+      - source: batt_2_power_in
+      - source: batt_3_power_in
+      - source: batt_4_power_in      
+      - source: batt_5_power_in
+      - source: batt_6_power_in            
+      - source: batt_7_power_in
+      - source: batt_8_power_in
+      - source: batt_9_power_in
+
+
+  - platform: combination
+    type: sum
+    name: "bank power out"
+    id: bank_power_out
+    sources:
+      - source: batt_0_power_out
+      - source: batt_1_power_out
+      - source: batt_2_power_out
+      - source: batt_3_power_out
+      - source: batt_4_power_out
+      - source: batt_5_power_out
+      - source: batt_6_power_out
+      - source: batt_7_power_out
+      - source: batt_8_power_out
+      - source: batt_9_power_out
+      - source: batt_0_power_in
+      - source: batt_1_power_in
+      - source: batt_2_power_in
+      - source: batt_3_power_in      
+      - source: batt_4_power_in
+      - source: batt_5_power_in
+      - source: batt_6_power_in
+      - source: batt_7_power_in
+      - source: batt_8_power_in
+      - source: batt_9_power_in
+
+
+# you will need one of these sections for each battery you have - copy this into notepad++ or some other text editor and do a "find and replace" on the batt_0 to your new value "batt_3" and then paste that in at the end to add another battery
+
+  - platform: seplos_bms #################################### batt_0 ###################################
+    seplos_bms_id: bms0
+    min_cell_voltage:
+      name: "${batt_0} voltage cell min"
+      id: batt_0_voltage_cell_min
+    max_cell_voltage:
+      name: "${batt_0} voltage cell max"
+      id: batt_0_voltage_cell_max
+    min_voltage_cell:
+      name: "${batt_0} voltage cell min number"
+      id: batt_0_voltage_cell_min_number
+    max_voltage_cell:
+      name: "${batt_0} voltage cell max number"
+      id: batt_0_voltage_cell_max_number
+    delta_cell_voltage:
+      name: "${batt_0} voltage cell delta"
+      id: batt_0_voltage_cell_delta
+    average_cell_voltage:
+      name: "${batt_0} voltage cell average"
+      id: batt_0_voltage_cell_average
+    cell_voltage_1:
+      name: "${batt_0} voltage cell 1"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_2:
+      name: "${batt_0} voltage cell 2"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_3:
+      name: "${batt_0} voltage cell 3"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_4:
+      name: "${batt_0} voltage cell 4"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_5:
+      name: "${batt_0} voltage cell 5"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_6:
+      name: "${batt_0} voltage cell 6"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_7:
+      name: "${batt_0} voltage cell 7"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_8:
+      name: "${batt_0} voltage cell 8"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_9:
+      name: "${batt_0} voltage cell 9"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_10:
+      name: "${batt_0} voltage cell 10"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_11:
+      name: "${batt_0} voltage cell 11"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_12:
+      name: "${batt_0} voltage cell 12"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_13:
+      name: "${batt_0} voltage cell 13"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_14:
+      name: "${batt_0} voltage cell 14"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_15:
+      name: "${batt_0} voltage cell 15"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_16:
+      name: "${batt_0} voltage cell 16"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    temperature_1:
+      name: "${batt_0} temperature 1"
+    temperature_2:
+      name: "${batt_0} temperature 2"
+    temperature_3:
+      name: "${batt_0} temperature 3"
+    temperature_4:
+      name: "${batt_0} temperature 4"
+    temperature_5:
+      name: "${batt_0} temperature environment"
+    temperature_6:
+      name: "${batt_0} temperature mosfet"
+    total_voltage:
+      name: "${batt_0} voltage total"
+      id: batt_0_voltage_total
+    current:
+      name: "${batt_0} current"
+      id: batt_0_current
+    power:
+      name: "${batt_0} power net"
+      id: batt_0_power_net
+      filters: 
+        - multiply: 0.001 # Multiplication factor from W to kW is 0.001
+      unit_of_measurement: 'kW'
+      accuracy_decimals: 3
+    charging_power:
+      name: "${batt_0} power in"
+      id: batt_0_power_in
+      filters: 
+        - multiply: 0.001 # Multiplication factor from W to kW is 0.001
+      unit_of_measurement: 'kW'
+      accuracy_decimals: 3
+    discharging_power:
+      name: "${batt_0} power out"
+      id: batt_0_power_out
+      filters: 
+        - multiply: 0.001 # Multiplication factor from W to kW is 0.001
+      unit_of_measurement: 'kW'
+      accuracy_decimals: 3
+    residual_capacity:
+      name: "${batt_0} remaining capacity"
+    battery_capacity:
+      name: "${batt_0} battery capacity"
+    state_of_charge:
+      name: "${batt_0} state of charge"
+      id: batt_0_state_of_charge
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    charging_cycles:
+      name: "${batt_0} charging cycles"
+    state_of_health:
+      name: "${batt_0} state of health"
+      id: batt_0_state_of_health
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+
+  - platform: seplos_bms #################################### batt_1 ###################################
+    seplos_bms_id: bms1
+    min_cell_voltage:
+      name: "${batt_1} voltage cell min"
+      id: batt_1_voltage_cell_min
+    max_cell_voltage:
+      name: "${batt_1} voltage cell max"
+      id: batt_1_voltage_cell_max
+    min_voltage_cell:
+      name: "${batt_1} voltage cell min number"
+      id: batt_1_voltage_cell_min_number
+    max_voltage_cell:
+      name: "${batt_1} voltage cell max number"
+      id: batt_1_voltage_cell_max_number
+    delta_cell_voltage:
+      name: "${batt_1} voltage cell delta"
+      id: batt_1_voltage_cell_delta
+    average_cell_voltage:
+      name: "${batt_1} voltage cell average"
+      id: batt_1_voltage_cell_average
+    cell_voltage_1:
+      name: "${batt_1} voltage cell 1"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_2:
+      name: "${batt_1} voltage cell 2"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_3:
+      name: "${batt_1} voltage cell 3"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_4:
+      name: "${batt_1} voltage cell 4"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_5:
+      name: "${batt_1} voltage cell 5"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_6:
+      name: "${batt_1} voltage cell 6"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_7:
+      name: "${batt_1} voltage cell 7"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_8:
+      name: "${batt_1} voltage cell 8"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_9:
+      name: "${batt_1} voltage cell 9"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_10:
+      name: "${batt_1} voltage cell 10"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_11:
+      name: "${batt_1} voltage cell 11"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_12:
+      name: "${batt_1} voltage cell 12"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_13:
+      name: "${batt_1} voltage cell 13"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_14:
+      name: "${batt_1} voltage cell 14"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_15:
+      name: "${batt_1} voltage cell 15"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_16:
+      name: "${batt_1} voltage cell 16"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    temperature_1:
+      name: "${batt_1} temperature 1"
+    temperature_2:
+      name: "${batt_1} temperature 2"
+    temperature_3:
+      name: "${batt_1} temperature 3"
+    temperature_4:
+      name: "${batt_1} temperature 4"
+    temperature_5:
+      name: "${batt_1} temperature environment"
+    temperature_6:
+      name: "${batt_1} temperature mosfet"
+    total_voltage:
+      name: "${batt_1} voltage total"
+      id: batt_1_voltage_total
+    current:
+      name: "${batt_1} current"
+      id: batt_1_current
+    power:
+      name: "${batt_1} power net"
+      id: batt_1_power_net
+      filters: 
+        - multiply: 0.001 # Multiplication factor from W to kW is 0.001
+      unit_of_measurement: 'kW'
+      accuracy_decimals: 3
+    charging_power:
+      name: "${batt_1} power in"
+      id: batt_1_power_in
+      filters: 
+        - multiply: 0.001 # Multiplication factor from W to kW is 0.001
+      unit_of_measurement: 'kW'
+      accuracy_decimals: 3
+    discharging_power:
+      name: "${batt_1} power out"
+      id: batt_1_power_out
+      filters: 
+        - multiply: 0.001 # Multiplication factor from W to kW is 0.001
+      unit_of_measurement: 'kW'
+      accuracy_decimals: 3
+    residual_capacity:
+      name: "${batt_1} remaining capacity"
+    battery_capacity:
+      name: "${batt_1} battery capacity"
+    state_of_charge:
+      name: "${batt_1} state of charge"
+      id: batt_1_state_of_charge
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    charging_cycles:
+      name: "${batt_1} charging cycles"
+    state_of_health:
+      name: "${batt_1} state of health"
+      id: batt_1_state_of_health
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+
+
+  - platform: seplos_bms #################################### batt_2 ###################################
+    seplos_bms_id: bms2
+    min_cell_voltage:
+      name: "${batt_2} voltage cell min"
+      id: batt_2_voltage_cell_min
+    max_cell_voltage:
+      name: "${batt_2} voltage cell max"
+      id: batt_2_voltage_cell_max
+    min_voltage_cell:
+      name: "${batt_2} voltage cell min number"
+      id: batt_2_voltage_cell_min_number
+    max_voltage_cell:
+      name: "${batt_2} voltage cell max number"
+      id: batt_2_voltage_cell_max_number
+    delta_cell_voltage:
+      name: "${batt_2} voltage cell delta"
+      id: batt_2_voltage_cell_delta
+    average_cell_voltage:
+      name: "${batt_2} voltage cell average"
+      id: batt_2_voltage_cell_average
+    cell_voltage_1:
+      name: "${batt_2} voltage cell 1"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_2:
+      name: "${batt_2} voltage cell 2"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_3:
+      name: "${batt_2} voltage cell 3"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_4:
+      name: "${batt_2} voltage cell 4"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_5:
+      name: "${batt_2} voltage cell 5"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_6:
+      name: "${batt_2} voltage cell 6"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_7:
+      name: "${batt_2} voltage cell 7"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_8:
+      name: "${batt_2} voltage cell 8"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_9:
+      name: "${batt_2} voltage cell 9"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_10:
+      name: "${batt_2} voltage cell 10"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_11:
+      name: "${batt_2} voltage cell 11"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_12:
+      name: "${batt_2} voltage cell 12"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_13:
+      name: "${batt_2} voltage cell 13"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_14:
+      name: "${batt_2} voltage cell 14"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_15:
+      name: "${batt_2} voltage cell 15"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_16:
+      name: "${batt_2} voltage cell 16"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    temperature_1:
+      name: "${batt_2} temperature 1"
+    temperature_2:
+      name: "${batt_2} temperature 2"
+    temperature_3:
+      name: "${batt_2} temperature 3"
+    temperature_4:
+      name: "${batt_2} temperature 4"
+    temperature_5:
+      name: "${batt_2} temperature environment"
+    temperature_6:
+      name: "${batt_2} temperature mosfet"
+    total_voltage:
+      name: "${batt_2} voltage total"
+      id: batt_2_voltage_total
+    current:
+      name: "${batt_2} current"
+      id: batt_2_current
+    power:
+      name: "${batt_2} power net"
+      id: batt_2_power_net
+      filters: 
+        - multiply: 0.001 # Multiplication factor from W to kW is 0.001
+      unit_of_measurement: 'kW'
+      accuracy_decimals: 3
+    charging_power:
+      name: "${batt_2} power in"
+      id: batt_2_power_in
+      filters: 
+        - multiply: 0.001 # Multiplication factor from W to kW is 0.001
+      unit_of_measurement: 'kW'
+      accuracy_decimals: 3
+    discharging_power:
+      name: "${batt_2} power out"
+      id: batt_2_power_out
+      filters: 
+        - multiply: 0.001 # Multiplication factor from W to kW is 0.001
+      unit_of_measurement: 'kW'
+      accuracy_decimals: 3
+    residual_capacity:
+      name: "${batt_2} remaining capacity"
+    battery_capacity:
+      name: "${batt_2} battery capacity"
+    state_of_charge:
+      name: "${batt_2} state of charge"
+      id: batt_2_state_of_charge
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    charging_cycles:
+      name: "${batt_2} charging cycles"
+    state_of_health:
+      name: "${batt_2} state of health"
+      id: batt_2_state_of_health
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+
+
+  - platform: seplos_bms #################################### batt_3 ###################################
+    seplos_bms_id: bms3
+    min_cell_voltage:
+      name: "${batt_3} voltage cell min"
+      id: batt_3_voltage_cell_min
+    max_cell_voltage:
+      name: "${batt_3} voltage cell max"
+      id: batt_3_voltage_cell_max
+    min_voltage_cell:
+      name: "${batt_3} voltage cell min number"
+      id: batt_3_voltage_cell_min_number
+    max_voltage_cell:
+      name: "${batt_3} voltage cell max number"
+      id: batt_3_voltage_cell_max_number
+    delta_cell_voltage:
+      name: "${batt_3} voltage cell delta"
+      id: batt_3_voltage_cell_delta
+    average_cell_voltage:
+      name: "${batt_3} voltage cell average"
+      id: batt_3_voltage_cell_average
+    cell_voltage_1:
+      name: "${batt_3} voltage cell 1"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_2:
+      name: "${batt_3} voltage cell 2"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_3:
+      name: "${batt_3} voltage cell 3"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_4:
+      name: "${batt_3} voltage cell 4"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_5:
+      name: "${batt_3} voltage cell 5"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_6:
+      name: "${batt_3} voltage cell 6"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_7:
+      name: "${batt_3} voltage cell 7"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_8:
+      name: "${batt_3} voltage cell 8"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_9:
+      name: "${batt_3} voltage cell 9"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_10:
+      name: "${batt_3} voltage cell 10"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_11:
+      name: "${batt_3} voltage cell 11"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_12:
+      name: "${batt_3} voltage cell 12"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_13:
+      name: "${batt_3} voltage cell 13"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_14:
+      name: "${batt_3} voltage cell 14"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_15:
+      name: "${batt_3} voltage cell 15"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_16:
+      name: "${batt_3} voltage cell 16"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    temperature_1:
+      name: "${batt_3} temperature 1"
+    temperature_2:
+      name: "${batt_3} temperature 2"
+    temperature_3:
+      name: "${batt_3} temperature 3"
+    temperature_4:
+      name: "${batt_3} temperature 4"
+    temperature_5:
+      name: "${batt_3} temperature environment"
+    temperature_6:
+      name: "${batt_3} temperature mosfet"
+    total_voltage:
+      name: "${batt_3} voltage total"
+      id: batt_3_voltage_total
+    current:
+      name: "${batt_3} current"
+      id: batt_3_current
+    power:
+      name: "${batt_3} power net"
+      id: batt_3_power_net
+      filters: 
+        - multiply: 0.001 # Multiplication factor from W to kW is 0.001
+      unit_of_measurement: 'kW'
+      accuracy_decimals: 3
+    charging_power:
+      name: "${batt_3} power in"
+      id: batt_3_power_in
+      filters: 
+        - multiply: 0.001 # Multiplication factor from W to kW is 0.001
+      unit_of_measurement: 'kW'
+      accuracy_decimals: 3
+    discharging_power:
+      name: "${batt_3} power out"
+      id: batt_3_power_out
+      filters: 
+        - multiply: 0.001 # Multiplication factor from W to kW is 0.001
+      unit_of_measurement: 'kW'
+      accuracy_decimals: 3
+    residual_capacity:
+      name: "${batt_3} remaining capacity"
+    battery_capacity:
+      name: "${batt_3} battery capacity"
+    state_of_charge:
+      name: "${batt_3} state of charge"
+      id: batt_3_state_of_charge
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    charging_cycles:
+      name: "${batt_3} charging cycles"
+    state_of_health:
+      name: "${batt_3} state of health"
+      id: batt_3_state_of_health
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+
+
+  - platform: seplos_bms #################################### batt_4 ###################################
+    seplos_bms_id: bms4
+    min_cell_voltage:
+      name: "${batt_4} voltage cell min"
+      id: batt_4_voltage_cell_min
+    max_cell_voltage:
+      name: "${batt_4} voltage cell max"
+      id: batt_4_voltage_cell_max
+    min_voltage_cell:
+      name: "${batt_4} voltage cell min number"
+      id: batt_4_voltage_cell_min_number
+    max_voltage_cell:
+      name: "${batt_4} voltage cell max number"
+      id: batt_4_voltage_cell_max_number
+    delta_cell_voltage:
+      name: "${batt_4} voltage cell delta"
+      id: batt_4_voltage_cell_delta
+    average_cell_voltage:
+      name: "${batt_4} voltage cell average"
+      id: batt_4_voltage_cell_average
+    cell_voltage_1:
+      name: "${batt_4} voltage cell 1"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_2:
+      name: "${batt_4} voltage cell 2"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_3:
+      name: "${batt_4} voltage cell 3"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_4:
+      name: "${batt_4} voltage cell 4"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_5:
+      name: "${batt_4} voltage cell 5"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_6:
+      name: "${batt_4} voltage cell 6"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_7:
+      name: "${batt_4} voltage cell 7"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_8:
+      name: "${batt_4} voltage cell 8"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_9:
+      name: "${batt_4} voltage cell 9"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_10:
+      name: "${batt_4} voltage cell 10"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_11:
+      name: "${batt_4} voltage cell 11"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_12:
+      name: "${batt_4} voltage cell 12"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_13:
+      name: "${batt_4} voltage cell 13"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_14:
+      name: "${batt_4} voltage cell 14"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_15:
+      name: "${batt_4} voltage cell 15"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_16:
+      name: "${batt_4} voltage cell 16"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    temperature_1:
+      name: "${batt_4} temperature 1"
+    temperature_2:
+      name: "${batt_4} temperature 2"
+    temperature_3:
+      name: "${batt_4} temperature 3"
+    temperature_4:
+      name: "${batt_4} temperature 4"
+    temperature_5:
+      name: "${batt_4} temperature environment"
+    temperature_6:
+      name: "${batt_4} temperature mosfet"
+    total_voltage:
+      name: "${batt_4} voltage total"
+      id: batt_4_voltage_total
+    current:
+      name: "${batt_4} current"
+      id: batt_4_current
+    power:
+      name: "${batt_4} power net"
+      id: batt_4_power_net
+      filters: 
+        - multiply: 0.001 # Multiplication factor from W to kW is 0.001
+      unit_of_measurement: 'kW'
+      accuracy_decimals: 3
+    charging_power:
+      name: "${batt_4} power in"
+      id: batt_4_power_in
+      filters: 
+        - multiply: 0.001 # Multiplication factor from W to kW is 0.001
+      unit_of_measurement: 'kW'
+      accuracy_decimals: 3
+    discharging_power:
+      name: "${batt_4} power out"
+      id: batt_4_power_out
+      filters: 
+        - multiply: 0.001 # Multiplication factor from W to kW is 0.001
+      unit_of_measurement: 'kW'
+      accuracy_decimals: 3
+    residual_capacity:
+      name: "${batt_4} remaining capacity"
+    battery_capacity:
+      name: "${batt_4} battery capacity"
+    state_of_charge:
+      name: "${batt_4} state of charge"
+      id: batt_4_state_of_charge
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    charging_cycles:
+      name: "${batt_4} charging cycles"
+    state_of_health:
+      name: "${batt_4} state of health"
+      id: batt_4_state_of_health
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+
+
+  - platform: seplos_bms #################################### batt_5 ###################################
+    seplos_bms_id: bms5
+    min_cell_voltage:
+      name: "${batt_5} voltage cell min"
+      id: batt_5_voltage_cell_min
+    max_cell_voltage:
+      name: "${batt_5} voltage cell max"
+      id: batt_5_voltage_cell_max
+    min_voltage_cell:
+      name: "${batt_5} voltage cell min number"
+      id: batt_5_voltage_cell_min_number
+    max_voltage_cell:
+      name: "${batt_5} voltage cell max number"
+      id: batt_5_voltage_cell_max_number
+    delta_cell_voltage:
+      name: "${batt_5} voltage cell delta"
+      id: batt_5_voltage_cell_delta
+    average_cell_voltage:
+      name: "${batt_5} voltage cell average"
+      id: batt_5_voltage_cell_average
+    cell_voltage_1:
+      name: "${batt_5} voltage cell 1"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_2:
+      name: "${batt_5} voltage cell 2"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_3:
+      name: "${batt_5} voltage cell 3"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_4:
+      name: "${batt_5} voltage cell 4"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_5:
+      name: "${batt_5} voltage cell 5"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_6:
+      name: "${batt_5} voltage cell 6"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_7:
+      name: "${batt_5} voltage cell 7"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_8:
+      name: "${batt_5} voltage cell 8"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_9:
+      name: "${batt_5} voltage cell 9"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_10:
+      name: "${batt_5} voltage cell 10"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_11:
+      name: "${batt_5} voltage cell 11"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_12:
+      name: "${batt_5} voltage cell 12"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_13:
+      name: "${batt_5} voltage cell 13"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_14:
+      name: "${batt_5} voltage cell 14"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_15:
+      name: "${batt_5} voltage cell 15"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_16:
+      name: "${batt_5} voltage cell 16"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    temperature_1:
+      name: "${batt_5} temperature 1"
+    temperature_2:
+      name: "${batt_5} temperature 2"
+    temperature_3:
+      name: "${batt_5} temperature 3"
+    temperature_4:
+      name: "${batt_5} temperature 4"
+    temperature_5:
+      name: "${batt_5} temperature environment"
+    temperature_6:
+      name: "${batt_5} temperature mosfet"
+    total_voltage:
+      name: "${batt_5} voltage total"
+      id: batt_5_voltage_total
+    current:
+      name: "${batt_5} current"
+      id: batt_5_current
+    power:
+      name: "${batt_5} power net"
+      id: batt_5_power_net
+      filters: 
+        - multiply: 0.001 # Multiplication factor from W to kW is 0.001
+      unit_of_measurement: 'kW'
+      accuracy_decimals: 3
+    charging_power:
+      name: "${batt_5} power in"
+      id: batt_5_power_in
+      filters: 
+        - multiply: 0.001 # Multiplication factor from W to kW is 0.001
+      unit_of_measurement: 'kW'
+      accuracy_decimals: 3
+    discharging_power:
+      name: "${batt_5} power out"
+      id: batt_5_power_out
+      filters: 
+        - multiply: 0.001 # Multiplication factor from W to kW is 0.001
+      unit_of_measurement: 'kW'
+      accuracy_decimals: 3
+    residual_capacity:
+      name: "${batt_5} remaining capacity"
+    battery_capacity:
+      name: "${batt_5} battery capacity"
+    state_of_charge:
+      name: "${batt_5} state of charge"
+      id: batt_5_state_of_charge
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    charging_cycles:
+      name: "${batt_5} charging cycles"
+    state_of_health:
+      name: "${batt_5} state of health"
+      id: batt_5_state_of_health
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+
+
+  - platform: seplos_bms #################################### batt_6 ###################################
+    seplos_bms_id: bms6
+    min_cell_voltage:
+      name: "${batt_6} voltage cell min"
+      id: batt_6_voltage_cell_min
+    max_cell_voltage:
+      name: "${batt_6} voltage cell max"
+      id: batt_6_voltage_cell_max
+    min_voltage_cell:
+      name: "${batt_6} voltage cell min number"
+      id: batt_6_voltage_cell_min_number
+    max_voltage_cell:
+      name: "${batt_6} voltage cell max number"
+      id: batt_6_voltage_cell_max_number
+    delta_cell_voltage:
+      name: "${batt_6} voltage cell delta"
+      id: batt_6_voltage_cell_delta
+    average_cell_voltage:
+      name: "${batt_6} voltage cell average"
+      id: batt_6_voltage_cell_average
+    cell_voltage_1:
+      name: "${batt_6} voltage cell 1"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_2:
+      name: "${batt_6} voltage cell 2"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_3:
+      name: "${batt_6} voltage cell 3"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_4:
+      name: "${batt_6} voltage cell 4"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_5:
+      name: "${batt_6} voltage cell 5"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_6:
+      name: "${batt_6} voltage cell 6"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_7:
+      name: "${batt_6} voltage cell 7"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_8:
+      name: "${batt_6} voltage cell 8"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_9:
+      name: "${batt_6} voltage cell 9"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_10:
+      name: "${batt_6} voltage cell 10"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_11:
+      name: "${batt_6} voltage cell 11"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_12:
+      name: "${batt_6} voltage cell 12"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_13:
+      name: "${batt_6} voltage cell 13"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_14:
+      name: "${batt_6} voltage cell 14"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_15:
+      name: "${batt_6} voltage cell 15"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_16:
+      name: "${batt_6} voltage cell 16"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    temperature_1:
+      name: "${batt_6} temperature 1"
+    temperature_2:
+      name: "${batt_6} temperature 2"
+    temperature_3:
+      name: "${batt_6} temperature 3"
+    temperature_4:
+      name: "${batt_6} temperature 4"
+    temperature_5:
+      name: "${batt_6} temperature environment"
+    temperature_6:
+      name: "${batt_6} temperature mosfet"
+    total_voltage:
+      name: "${batt_6} voltage total"
+      id: batt_6_voltage_total
+    current:
+      name: "${batt_6} current"
+      id: batt_6_current
+    power:
+      name: "${batt_6} power net"
+      id: batt_6_power_net
+      filters: 
+        - multiply: 0.001 # Multiplication factor from W to kW is 0.001
+      unit_of_measurement: 'kW'
+      accuracy_decimals: 3
+    charging_power:
+      name: "${batt_6} power in"
+      id: batt_6_power_in
+      filters: 
+        - multiply: 0.001 # Multiplication factor from W to kW is 0.001
+      unit_of_measurement: 'kW'
+      accuracy_decimals: 3
+    discharging_power:
+      name: "${batt_6} power out"
+      id: batt_6_power_out
+      filters: 
+        - multiply: 0.001 # Multiplication factor from W to kW is 0.001
+      unit_of_measurement: 'kW'
+      accuracy_decimals: 3
+    residual_capacity:
+      name: "${batt_6} remaining capacity"
+    battery_capacity:
+      name: "${batt_6} battery capacity"
+    state_of_charge:
+      name: "${batt_6} state of charge"
+      id: batt_6_state_of_charge
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    charging_cycles:
+      name: "${batt_6} charging cycles"
+    state_of_health:
+      name: "${batt_6} state of health"
+      id: batt_6_state_of_health
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+
+
+  - platform: seplos_bms #################################### batt_7 ###################################
+    seplos_bms_id: bms7
+    min_cell_voltage:
+      name: "${batt_7} voltage cell min"
+      id: batt_7_voltage_cell_min
+    max_cell_voltage:
+      name: "${batt_7} voltage cell max"
+      id: batt_7_voltage_cell_max
+    min_voltage_cell:
+      name: "${batt_7} voltage cell min number"
+      id: batt_7_voltage_cell_min_number
+    max_voltage_cell:
+      name: "${batt_7} voltage cell max number"
+      id: batt_7_voltage_cell_max_number
+    delta_cell_voltage:
+      name: "${batt_7} voltage cell delta"
+      id: batt_7_voltage_cell_delta
+    average_cell_voltage:
+      name: "${batt_7} voltage cell average"
+      id: batt_7_voltage_cell_average
+    cell_voltage_1:
+      name: "${batt_7} voltage cell 1"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_2:
+      name: "${batt_7} voltage cell 2"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_3:
+      name: "${batt_7} voltage cell 3"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_4:
+      name: "${batt_7} voltage cell 4"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_5:
+      name: "${batt_7} voltage cell 5"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_6:
+      name: "${batt_7} voltage cell 6"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_7:
+      name: "${batt_7} voltage cell 7"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_8:
+      name: "${batt_7} voltage cell 8"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_9:
+      name: "${batt_7} voltage cell 9"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_10:
+      name: "${batt_7} voltage cell 10"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_11:
+      name: "${batt_7} voltage cell 11"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_12:
+      name: "${batt_7} voltage cell 12"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_13:
+      name: "${batt_7} voltage cell 13"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_14:
+      name: "${batt_7} voltage cell 14"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_15:
+      name: "${batt_7} voltage cell 15"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_16:
+      name: "${batt_7} voltage cell 16"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    temperature_1:
+      name: "${batt_7} temperature 1"
+    temperature_2:
+      name: "${batt_7} temperature 2"
+    temperature_3:
+      name: "${batt_7} temperature 3"
+    temperature_4:
+      name: "${batt_7} temperature 4"
+    temperature_5:
+      name: "${batt_7} temperature environment"
+    temperature_6:
+      name: "${batt_7} temperature mosfet"
+    total_voltage:
+      name: "${batt_7} voltage total"
+      id: batt_7_voltage_total
+    current:
+      name: "${batt_7} current"
+      id: batt_7_current
+    power:
+      name: "${batt_7} power net"
+      id: batt_7_power_net
+      filters: 
+        - multiply: 0.001 # Multiplication factor from W to kW is 0.001
+      unit_of_measurement: 'kW'
+      accuracy_decimals: 3
+    charging_power:
+      name: "${batt_7} power in"
+      id: batt_7_power_in
+      filters: 
+        - multiply: 0.001 # Multiplication factor from W to kW is 0.001
+      unit_of_measurement: 'kW'
+      accuracy_decimals: 3
+    discharging_power:
+      name: "${batt_7} power out"
+      id: batt_7_power_out
+      filters: 
+        - multiply: 0.001 # Multiplication factor from W to kW is 0.001
+      unit_of_measurement: 'kW'
+      accuracy_decimals: 3
+    residual_capacity:
+      name: "${batt_7} remaining capacity"
+    battery_capacity:
+      name: "${batt_7} battery capacity"
+    state_of_charge:
+      name: "${batt_7} state of charge"
+      id: batt_7_state_of_charge
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    charging_cycles:
+      name: "${batt_7} charging cycles"
+    state_of_health:
+      name: "${batt_7} state of health"
+      id: batt_7_state_of_health
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+
+
+  - platform: seplos_bms #################################### batt_8 ###################################
+    seplos_bms_id: bms8
+    min_cell_voltage:
+      name: "${batt_8} voltage cell min"
+      id: batt_8_voltage_cell_min
+    max_cell_voltage:
+      name: "${batt_8} voltage cell max"
+      id: batt_8_voltage_cell_max
+    min_voltage_cell:
+      name: "${batt_8} voltage cell min number"
+      id: batt_8_voltage_cell_min_number
+    max_voltage_cell:
+      name: "${batt_8} voltage cell max number"
+      id: batt_8_voltage_cell_max_number
+    delta_cell_voltage:
+      name: "${batt_8} voltage cell delta"
+      id: batt_8_voltage_cell_delta
+    average_cell_voltage:
+      name: "${batt_8} voltage cell average"
+      id: batt_8_voltage_cell_average
+    cell_voltage_1:
+      name: "${batt_8} voltage cell 1"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_2:
+      name: "${batt_8} voltage cell 2"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_3:
+      name: "${batt_8} voltage cell 3"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_4:
+      name: "${batt_8} voltage cell 4"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_5:
+      name: "${batt_8} voltage cell 5"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_6:
+      name: "${batt_8} voltage cell 6"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_7:
+      name: "${batt_8} voltage cell 7"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_8:
+      name: "${batt_8} voltage cell 8"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_9:
+      name: "${batt_8} voltage cell 9"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_10:
+      name: "${batt_8} voltage cell 10"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_11:
+      name: "${batt_8} voltage cell 11"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_12:
+      name: "${batt_8} voltage cell 12"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_13:
+      name: "${batt_8} voltage cell 13"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_14:
+      name: "${batt_8} voltage cell 14"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_15:
+      name: "${batt_8} voltage cell 15"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_16:
+      name: "${batt_8} voltage cell 16"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    temperature_1:
+      name: "${batt_8} temperature 1"
+    temperature_2:
+      name: "${batt_8} temperature 2"
+    temperature_3:
+      name: "${batt_8} temperature 3"
+    temperature_4:
+      name: "${batt_8} temperature 4"
+    temperature_5:
+      name: "${batt_8} temperature environment"
+    temperature_6:
+      name: "${batt_8} temperature mosfet"
+    total_voltage:
+      name: "${batt_8} voltage total"
+      id: batt_8_voltage_total
+    current:
+      name: "${batt_8} current"
+      id: batt_8_current
+    power:
+      name: "${batt_8} power net"
+      id: batt_8_power_net
+      filters: 
+        - multiply: 0.001 # Multiplication factor from W to kW is 0.001
+      unit_of_measurement: 'kW'
+      accuracy_decimals: 3
+    charging_power:
+      name: "${batt_8} power in"
+      id: batt_8_power_in
+      filters: 
+        - multiply: 0.001 # Multiplication factor from W to kW is 0.001
+      unit_of_measurement: 'kW'
+      accuracy_decimals: 3
+    discharging_power:
+      name: "${batt_8} power out"
+      id: batt_8_power_out
+      filters: 
+        - multiply: 0.001 # Multiplication factor from W to kW is 0.001
+      unit_of_measurement: 'kW'
+      accuracy_decimals: 3
+    residual_capacity:
+      name: "${batt_8} remaining capacity"
+    battery_capacity:
+      name: "${batt_8} battery capacity"
+    state_of_charge:
+      name: "${batt_8} state of charge"
+      id: batt_8_state_of_charge
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    charging_cycles:
+      name: "${batt_8} charging cycles"
+    state_of_health:
+      name: "${batt_8} state of health"
+      id: batt_8_state_of_health
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+
+  - platform: seplos_bms #################################### batt_9 ###################################
+    seplos_bms_id: bms9
+    min_cell_voltage:
+      name: "${batt_9} voltage cell min"
+      id: batt_9_voltage_cell_min
+    max_cell_voltage:
+      name: "${batt_9} voltage cell max"
+      id: batt_9_voltage_cell_max
+    min_voltage_cell:
+      name: "${batt_9} voltage cell min number"
+      id: batt_9_voltage_cell_min_number
+    max_voltage_cell:
+      name: "${batt_9} voltage cell max number"
+      id: batt_9_voltage_cell_max_number
+    delta_cell_voltage:
+      name: "${batt_9} voltage cell delta"
+      id: batt_9_voltage_cell_delta
+    average_cell_voltage:
+      name: "${batt_9} voltage cell average"
+      id: batt_9_voltage_cell_average
+    cell_voltage_1:
+      name: "${batt_9} voltage cell 1"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_2:
+      name: "${batt_9} voltage cell 2"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_3:
+      name: "${batt_9} voltage cell 3"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_4:
+      name: "${batt_9} voltage cell 4"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_5:
+      name: "${batt_9} voltage cell 5"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_6:
+      name: "${batt_9} voltage cell 6"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_7:
+      name: "${batt_9} voltage cell 7"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_8:
+      name: "${batt_9} voltage cell 8"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_9:
+      name: "${batt_9} voltage cell 9"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_10:
+      name: "${batt_9} voltage cell 10"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_11:
+      name: "${batt_9} voltage cell 11"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_12:
+      name: "${batt_9} voltage cell 12"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_13:
+      name: "${batt_9} voltage cell 13"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_14:
+      name: "${batt_9} voltage cell 14"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_15:
+      name: "${batt_9} voltage cell 15"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    cell_voltage_16:
+      name: "${batt_9} voltage cell 16"
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    temperature_1:
+      name: "${batt_9} temperature 1"
+    temperature_2:
+      name: "${batt_9} temperature 2"
+    temperature_3:
+      name: "${batt_9} temperature 3"
+    temperature_4:
+      name: "${batt_9} temperature 4"
+    temperature_5:
+      name: "${batt_9} temperature environment"
+    temperature_6:
+      name: "${batt_9} temperature mosfet"
+    total_voltage:
+      name: "${batt_9} voltage total"
+      id: batt_9_voltage_total
+    current:
+      name: "${batt_9} current"
+      id: batt_9_current
+    power:
+      name: "${batt_9} power net"
+      id: batt_9_power_net
+      filters: 
+        - multiply: 0.001 # Multiplication factor from W to kW is 0.001
+      unit_of_measurement: 'kW'
+      accuracy_decimals: 3
+    charging_power:
+      name: "${batt_9} power in"
+      id: batt_9_power_in
+      filters: 
+        - multiply: 0.001 # Multiplication factor from W to kW is 0.001
+      unit_of_measurement: 'kW'
+      accuracy_decimals: 3
+    discharging_power:
+      name: "${batt_9} power out"
+      id: batt_9_power_out
+      filters: 
+        - multiply: 0.001 # Multiplication factor from W to kW is 0.001
+      unit_of_measurement: 'kW'
+      accuracy_decimals: 3
+    residual_capacity:
+      name: "${batt_9} remaining capacity"
+    battery_capacity:
+      name: "${batt_9} battery capacity"
+    state_of_charge:
+      name: "${batt_9} state of charge"
+      id: batt_9_state_of_charge
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+    charging_cycles:
+      name: "${batt_9} charging cycles"
+    state_of_health:
+      name: "${batt_9} state of health"
+      id: batt_9_state_of_health
+      filters:
+      - quantile:
+          window_size: 4
+          send_every: 1
+          send_first_at: 1
+          quantile: 0.75
+
+  #######################################################################    OLD REVERSE ENGINEERING DATA - left for posterity    ###############################################
+
+  #- platform: template
+  #  name: "Bank Net Power"
+  #  id: batt_net_power
+  #  lambda: |-
+  #    return (-id(batt_0_power).state + id(batt_1_power).state + id(batt_2_power).state);
+  #  update_interval: 5s
+  #  unit_of_measurement: "W"
+  #  icon: mdi:flash
+  #  device_class: "power"
+  #  state_class: "measurement"
+
+      # Ruixu Battery Testing with windows application / reverse engineering
+      # First request in Strings:          \xEF\x00\xFB\x00\xFF\x05\x16\
+      # 2                                  \xEF\x00\x83\x04\x00e\x00\x01\xFF\x13\x16    e = 0x65
+      # 3                                  \xEF\x00\x83\x04\x00\xB5\x00\x01\xFE\xC3\x16
+      # 4                                  ~21004642E00200FD36\r
+      # 5                                  ~21004644E00200FD34\r
+      # 6                                  \xEF\x00\xBD\x04\x01\x12\x00 \xFF\f\x16
+      # 7                                  \xEF\x00\xBD\x04\x00\xFA\x00\x14\xFE1\x16
+      # 8                                  \xEF\x00\xBD\x04\x01\xD4\x00\x14\xFEV\x16
+      # 9                                  ~21004651E00200FD36\r
+      # 10                                 ~2100464D0000FD9B\r
+
+      # hex 1                              EF 00 FB 00 FF 05 16
+      # hex 1 response                     EF 00 FB 0B 00 43 4E 31 30 2E 30 32 00 00 00 FD 78 16
+
+      # hex 2                              EF 00 83 04 00 65 00 01 FF 13 16
+      # hex 2 response                     EF 00 83 04 00 02 7A A8 FE 55 16
+
+      # hex 3                              EF 00 83 04 00 B5 00 01 FE C3 16
+      # hex 3 response                     EF 00 83 04 00 02 00 FF FE 78 16
+
+      # hex 4                              7E 32 31 30 30 34 36 34 32 45 30 30 32 30 30 46 44 33 36 0D
+      # hex 4 response                     7e 32 31 30 30 34 36 30 30 38 30 38 30 30 30 31 30 30 43 45 32 30 43 45 31 30 43 44 46 30 43 45 32 30 43 45 30 30 43 45 33 30 43 44 46 30 43 45 31 30 43 44 46 30 43 45 31 30 43 45 31 30 43 45 30 30 43 45 30 30 43 45 31 30 43 45 30 30 43 45 30 30 37 30 42 43 43 30 42 44 31 30 42 43 45 30 42 43 46 30 42 44 42 30 42 43 43 30 42 44 37 30 30 30 30 31 34 39 35 34 38 41 37 30 34 37 41 41 38 30 30 30 31 33 42 36 34 30 30 30 30 45 30 44 33 5c 72
+      # this is the cell voltage I belive                                                     30 43 45 32 = 3.298v    30 43 44 46 = 3.295v                                                                                                                                        30 43 45 30 = 3.296v = last voltage                        
+
+      # hex 5                              7E 32 31 30 30 34 36 34 34 45 30 30 32 30 30 46 44 33 34 0D
+      # hex 5 response                     7e 32 31 30 30 34 36 30 30 32 30 34 41 30 30 31 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 37 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 38 30 30 30 36 30 30 30 30 30 30 30 30 30 30 30 30 45 46 41 36 5c 72
+
+      # hex 6                              EF 00 BD 04 01 12 00 20 FF 0A 16
+
+      # hex 7                              EF 00 BD 04 00 FA 00 14 FE 31 16
+
+      # hex 8                              EF 00 BD 04 01 D4 00 14 FE 56 16
+
+      # hex 9                              7E 32 31 30 30 34 36 35 31 45 30 30 32 30 30 46 44 33 36 0D
+
+      # hex 10                             7E 32 31 30 30 34 36 34 44 30 30 30 30 46 44 39 42 0D
+      #                                    7E 32 31 30 30 34 36 30 30 32 30 30 45 30 37 45 38 30 39 30 44 30 37 30 31 30 30 46 41 42 33 0D
+
+# request 1
+# >>> "\xEF\x00\xFB\x00\xFF\x05\x16"
+# >>> EF 00 FB 00 FF 05 16
+# <<< "\xEF\x00\xFB\v\x00CN10.02\x00\x00\x00\xFDx\x16"
+# <<< EF 00 FB 0B 00 43 4E 31 30 2E 30 32 00 00 00 FD 78 16
+
+# request 2
+# >>> "\xEF\x00\x83\x04\x00e\x00\x01\xFF\x13\x16"
+# >>> EF 00 83 04 00 65 00 01 FF 13 16
+# <<< "\xEF\x00\x83\x04\x00\x02z\xA8\xFEU\x16"
+# <<< EF 00 83 04 00 02 7A A8 FE 55 16
+# 02 = maybe binary?? 00000010
+# 7A = 01111010
+
+# request 3
+# >>> "\xEF\x00\x83\x04\x00\xB5\x00\x01\xFE\xC3\x16"
+# >>> EF 00 83 04 00 B5 00 01 FE C3 16
+# <<< "\xEF\x00\x83\x04\x00\x02\x00\xFF\xFEx\x16"
+# <<< EF 00 83 04 00 02 00 FF FE 78 16
+# 02 = maybe binary?? 00000010
+# 00 = 0
+
+# request 4 - cell volts 0x42 = get analog value for old pylon protocol
+# >>> "~21004642E00200FD36\r"
+# >>> 7E 32 31 30 30 34 36 34 32 45 30 30 32 30 30 46 44 33 36 0D
+
+#      ~21004600808000 10 0CE00CDF0CDD0CE00CDE0CE10CDD0CDF0CDD0CDF0CDF0CDE0CDE0CDE0CDE0CDE 070BAE0BB20BAF0BB00BC60BB80BC00000149148A7047AA800013B640000E056
+
+# ~21004600808000 starting data
+# 10 = 16 cell count
+# 0CE0 = 3.296v cell 1 voltage
+# 0CDF = 3.295v cell 2 voltage
+# 0CDD0CE00CDE0CE10CDD0CDF0CDD0CDF0CDF0CDE0CDE0CDE0CDE0CDE - remaining cell voltages
+# 07   = 7        -temperature count = number of sensors
+# 0BAE = 29.90    -Temp Cell 1
+# 0BB2 = 29.94
+# 0BAF = 29.91
+# 0BB0 = 29.92
+# 0BC6 = 30.14
+# 0BB8 = 30.00
+# 0BC0 = 30.08
+# 0000 = 0        -Pack A?? Signed integer charge is positive
+# 1491 = 52.65v   -Pack V
+# 48A7 = 18599mAh -remaining Ah
+# 04   = 04       -Manual says "custom quantity"
+# 7AA8 = 314.00Ah -full capacity Ah
+# 0001 = 1        -cycles
+# 3B   = 59       -SOC% :)
+# 64   = 100      -SOH??
+# 0000
+# E056\r - ending
+
+
+
+
+# <<< 7E 32 31 30 30 34 36 30 30 38 30 38 30 30 30 31 30 30 43 45 30 30 43 44 46 30 43 44 44 30 43 45 30 30 43 44 45 30 43 45 31 30 43 44 44 30 43 44 46 30 43 44 44 30 43 44 46 30 43 44 46 30 43 44 45 30 43 44 45 30 43 44 45 30 43 44 45 30 43 44 45 30 37 30 42 41 45 30 42 42 32 30 42 41 46 30 42 42 30 30 42 43 36 30 42 42 38 30 42 43 30 30 30 30 30 31 34 39 31 34 38 41 37 30 34 37 41 41 38 30 30 30 31 33 42 36 34 30 30 30 30 45 30 35 36 0D
+#                                                  16    30 43 45 32 = 3.298v    30 43 44 46 = 3.295v                                                                                                                                        30 43 45 30 = 3.296v = last voltage 
+#                                                  cell count
+
+# request 5 - error flags / code? 0x44 = get alarm data for old pylon protocol
+# >>> "~21004644E00200FD34\r"
+# >>> 7E 32 31 30 30 34 36 34 34 45 30 30 32 30 30 46 44 33 34 0D
+# <<< "~21004600204A00 10 0000000000000000000000000000000007000000000000000000080006000000000000EFA6\r"
+
+# ~21004600204A00 10 0000000000000000000000000000000007000000000000000000
+# 08 = Dischard current
+# 00
+# 06 = Status #2 flag bits DFET and CFET on
+# 000000000000EFA6\r 
+
+# <<< 7E 32 31 30 30 34 36 30 30 32 30 34 41 30 30 31 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 37 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 38 30 30 30 36 30 30 30 30 30 30 30 30 30 30 30 30 45 46 41 36 0D
+
+# request 6 - error flags / code? 901227970007 = Battery code
+# >>> "\xEF\x00\xBD\x04\x01\x12\x00 \xFF\f\x16"
+# >>> EF 00 BD 04 01 12 00 20 FF 0C 16
+# <<< "\xEF\x00\xBD\"\x00 9012 27970007\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xFC\x95\x16"
+# <<< EF 00 BD 22 00 20 39 30 31 32 32 37 39 37 30 30 30 37 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 FC 95 16
+
+# request 7 - BMS SN1 serial number 1 = 90116322 2405150023
+# >>> "\xEF\x00\xBD\x04\x00\xFA\x00\x14\xFE1\x16"
+# >>> EF 00 BD 04 00 FA 00 14 FE 31 16
+# <<< "\xEF\x00\xBD\x16\x00\x1490116322 2405150023\x00\xFBk\x16"
+# <<< EF 00 BD 16 00 14 39 30 31 31 36 33 32 32 20 32 34 30 35 31 35 30 30 32 33 00 FB 6B 16
+
+# request 8 - BMS Serial number 2 = BMS4503004810000SZTB
+# >>> "\xEF\x00\xBD\x04\x01\xD4\x00\x14\xFEV\x16"
+# >>> EF 00 BD 04 01 D4 00 14 FE 56 16
+# <<< "\xEF\x00\xBD\x16\x00\x14BMS4503004810000SZTB\xFAk\x16"
+# <<< EF 00 BD 16 00 14 42 4D 53 34 35 30 33 30 30 34 38 31 30 30 30 30 53 5A 54 42 FA 6B 16
+
+# request 9 - Hardware Version and BMS SN2 App shows RX01 for SW version. HW Version = RS_GA02V01_51200
+# >>> "~21004651E00200FD36\r" = 0x51 = get manufacturer information
+# >>> 7E 32 31 30 30 34 36 35 31 45 30 30 32 30 30 46 44 33 36 0D
+# <<< "~21004600C040RS_GA02V01_51200    RX01BMS4503004810000SZTB                    F0E7\r"
+# <<< 7E 32 31 30 30 34 36 30 30 43 30 34 30 52 53 5F 47 41 30 32 56 30 31 5F 35 31 32 30 30 20 20 20 20 52 58 30 31 42 4D 53 34 35 30 33 30 30 34 38 31 30 30 30 30 53 5A 54 42 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 46 30 45 37 0D
+
+# request 10 - looks like time / date maybe 07E8 = 2024
+# >>> "~2100464D0000FD9B\r"
+# >>> 7E 32 31 30 30 34 36 34 44 30 30 30 30 46 44 39 42 0D
+# <<< "~21004600200E07E8090D070100FAB3\r"
+# <<< 7E 32 31 30 30 34 36 30 30 32 30 30 45 30 37 45 38 30 39 30 44 30 37 30 31 30 30 46 41 42 33 0D
+                            
+
+
+
+      # error example:                     EF 00 83 04 00 B5 00 01 FF 13 16      -the 13 is a miss type - so the response is some error I believe
+      # error response:                    EF 00 83 01 02 FF 7A 16
+      
