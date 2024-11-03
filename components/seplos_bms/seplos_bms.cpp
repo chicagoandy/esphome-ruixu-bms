@@ -100,7 +100,7 @@ void SeplosBms::on_telemetry_data_(const std::vector<uint8_t> &data) {
   offset = offset + 1 + (temperature_sensors * 2);
 
   //   54     0xFD 0x5C      Charge/discharge current         signed int?                   A
-  float current = (float) ((int16_t) seplos_get_16bit(offset)) * 0.1f;
+  float current = (float) ((int16_t) seplos_get_16bit(offset)) * 0.01f;
   this->publish_state_(this->current_sensor_, current);
 
   //   56     0x14 0xA0      Total battery voltage            5280 * 0.01f = 52.80          V
